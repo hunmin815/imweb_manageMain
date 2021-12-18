@@ -1,0 +1,948 @@
+<!DOCTYPE HTML>
+<!--
+	Editorial by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+    <meta name="google" content="notranslate">
+		<title>MALDEN Management System</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <script src="https://code.jquery.com/jquery-latest.min.js"></script>
+		<link rel="stylesheet" href="/static/manage/assets/css/main.css" />
+    <link rel="stylesheet" href="/static/manage/Product_table/css/style.css">
+    <link rel="stylesheet" href="/static/manage/button/ripple.css" >
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    {%with messages = get_flashed_messages()%}
+    {%if messages %}
+      <script type="text/javascript">
+        alert("{{messages[-1]}}");
+      </script>
+      {%endif%}
+    {%endwith%}
+    <style>
+      a {
+        border: 0;
+        outline: none;
+      }
+      @media screen and (min-width: 1px) and (max-width: 1700px){                                          /* 노트북 화면 배율 처리 */
+        body{
+          zoom: 90%;
+        }
+      }
+    </style>
+    <script>
+      function sleep(delay) {
+        var start = new Date().getTime();
+        while (new Date().getTime() < start + delay);
+      }
+      var timerID;
+      var timerID2;
+      var timerID3;
+      var timerID4;
+      var timerID5;
+      var timerID6;
+      var timerID7;
+      var timerID8;
+      $(document).ready(function () {
+        history.pushState('','','./manage')             // 동기화 후 URL 변경하기
+        sync_now();
+        Create_od_Row();
+        setTimeout("update_Rows()",500);
+        setTimeout("updateData()",600);
+        setTimeout("updateData2()",700);
+        setTimeout("update_now_quantity()",800);
+        setTimeout("update_IN_quantity()",1000);
+        setTimeout("update_OUT_quantity()",1200);
+
+        Create_od_Row_SP();
+        setTimeout("update_Rows_SP()",500);
+        setTimeout("updateData_SP()",600);
+        // setTimeout("updateData2_SP()",700);
+        setTimeout("update_Prod_Total_Stock_SP()",800);
+        // setTimeout("update_IN_quantity_SP()",1000);
+        // setTimeout("update_OUT_quantity_SP()",1200);
+        setTimeout("loading_exit()",1300);
+        // setTimeout("ckbox_ck()",2500);
+      });
+      
+      // 동기화 상태 판별 START
+      var sync_stop_tag = `<b>동기화 완료 </b><img src="/static/manage/images/sync_stop.png" alt="sync_icon" width="30px" style="margin-top: -3px; margin-right: 10px;">`
+      var sync_now_tag = `<b>동기화 중 </b><img src="/static/manage/images/sync_now.gif" alt="sync_icon" width="30px" style="filter: opacity(0.5) drop-shadow(0 0 0 red); margin-top: -3px; margin-right: 10px;">`
+      function sync_now() {
+      $.ajax({
+        url: "/sync_now",
+        type: "GET",
+        cache: false,
+        success: function (Row) {
+          var sync_now = Row.replace(/\"/g, "");
+          
+          if (sync_now == "0"){
+            $('.sync_now').empty();
+            $('.sync_now').append(sync_stop_tag);
+            $('.sync_now').data('sync_now', '0');
+          }
+          else{
+            $('.sync_now').empty();
+            $('.sync_now').append(sync_now_tag);
+            $('.sync_now').data('sync_now', '1');
+          }
+        }
+      });
+      timerID8 = setTimeout("sync_now()", 3000);
+      };
+      // 동기화 상태 판별 END
+      
+      // 상품 행수 최초 생성 및 동기화 폼 생성 START
+      function Create_od_Row() {
+      $.ajax({
+        url: "/Product_Rows",
+        type: "GET",
+        // dataType : "json",
+        cache: false,
+        success: function (Row) {
+          var Product_od_Row = JSON.parse(Row);
+          var od_Row_Count = JSON.stringify(Product_od_Row[0]['COUNT(*)']);               // 상품 상세 옵션 목록 행수 (Prod_od_List)
+          var Prod_Row_Count = JSON.stringify(Product_od_Row[1]['COUNT(*)']);             // 상품 목록 행수 (Product_List)
+
+          for (var i = Number(od_Row_Count)-1; i > -1; i--){                              // 값 전달 용 hidden 생성
+            var after_Value = `<input type="hidden" id="hidden_ck_pdn_odn_`+i+`" name="hidden_ck_pdn_odn_`+i+`" value="0"/>
+                               <input type="hidden" id="hidden_ck_size_`+i+`" name="hidden_ck_size_`+i+`" value="0"/>
+                               <input type="hidden" id="hidden_ck_in_quantity_`+i+`" name="hidden_ck_in_quantity_`+i+`" value="0"/>
+                               <input type="hidden" id="hidden_ck_out_quantity_`+i+`" name="hidden_ck_out_quantity_`+i+`" value="0"/>`
+            $('#hidden_ck_count').after(after_Value);
+          }
+
+          $('#hidden_od_Row').val(od_Row_Count);
+          $('#hidden_ck_od_Row').val(od_Row_Count);
+          $('#hidden_Prod_Row').val(Prod_Row_Count);
+        }
+      });
+      };
+      // 상품 행수 최초 생성 및 동기화 폼 생성 END
+
+      // 상품 행수 실시간 호출 START
+      function update_Rows() {
+      $.ajax({
+        url: "/Product_Rows",
+        type: "GET",
+        cache: false,
+        success: function (Row) {
+          var Product_od_Row = JSON.parse(Row);
+          var od_Row_Count = JSON.stringify(Product_od_Row[0]['COUNT(*)']);                          // 상품 상세 옵션 목록 행수 (Prod_od_List)
+          var Prod_Row_Count = JSON.stringify(Product_od_Row[1]['COUNT(*)']);                        // 상품 목록 행수 (Product_List)
+
+          $('#hidden_update_Prod_Row').val(Prod_Row_Count);
+          $('#hidden_update_od_Row').val(od_Row_Count);
+        }
+      });
+      };
+      // 상품 행수 실시간 호출 END
+
+      // 상품 리스트 생성 (Prod_od_List) START
+      function CurrencyCommas(x) {                                                                   // 화폐 comma 처리
+        return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      }
+      function updateData() {
+        $.ajax({
+          url: "/update_Prod_od_List",
+          type: "GET",
+          // dataType : "json",
+          cache: false,
+          success: function (data1) {
+            var Prod_od_List = JSON.parse(data1);                                                    // String 타입 -> Object 타입으로 변환
+            var od_Row_Count = $('#hidden_od_Row').val();
+
+            for (var a = 0; a < Number(od_Row_Count); a++){
+              var pdn_odn = JSON.stringify(Prod_od_List[a]['pdn_odn']).replace(/\"/g, "");
+              var od_stock_sku = JSON.stringify(Prod_od_List[a]['od_stock_sku']).replace(/\"/g, ""); // Object 타입 -> String 타입으로 변환
+              var od_size = JSON.stringify(Prod_od_List[a]['od_size']).replace(/\"/g, "");
+              var od_price = JSON.stringify(Prod_od_List[a]['od_price']).replace(/\"/g, "");
+              var od_stock = JSON.stringify(Prod_od_List[a]['od_stock']).replace(/\"/g, "");
+              var od_status = JSON.stringify(Prod_od_List[a]['od_status']).replace(/\"/g, "");
+              var append_Value2 = `<tr class="alert" role="alert" style="cursor: pointer;">
+                                  <td style="padding:15px;" align="center" id="id_tdck_`+String(a)+`">
+                                    <label class="checkbox-wrap checkbox-primary">
+                                      <input type="checkbox" id="ck_`+String(a)+`" value="`+pdn_odn+`" tabindex="-1">
+                                      <span class="checkmark"></span>
+                                    </label>
+                                  </td>
+                                  <td align="center" class=`+String(a)+` title="상품 선택">
+                                    <span id="id_pdn_odn_`+String(a)+`"></span>
+                                  </td>
+                                  <td width=30px; class=`+String(a)+` title="상품 선택">
+                                    <div class="img" id="id_image_url_`+String(a)+`"></div>
+                                  </td>
+                                  <td width=300px; class=`+String(a)+` title="상품 선택">
+                                    <div class="email" id="id_od_stock_sku_`+String(a)+`">
+                                    </div>
+                                    <input type="hidden" id="id_od_size_`+String(a)+`"/>
+                                  </td>
+                                  <td align="center" id="id_od_price_`+String(a)+`" title="상품 선택"></td>
+                                  <td width=110px; align="center" id="id_od_status_`+String(a)+`" title="상품 선택"></td>
+                                </tr>
+                                `;
+              $('#id_tbody').append(append_Value2);
+              $('#id_pdn_odn_'+String(a)).append(pdn_odn);
+              $('#id_od_stock_sku_'+String(a)).append("<span id=id2_od_stock_sku_"+String(a)+">"+od_stock_sku+"</span>");
+              $('#id_od_size_'+String(a)).val(od_size);
+              $('#id_od_price_'+String(a)).append(CurrencyCommas(od_price)+"원");
+              $('#id_od_status_'+String(a)).append(od_status);
+            }
+            // 행 클릭 시 체크박스 체크 START
+            $("#id_tbody").on('click', 'tr', function (e) {
+              if ($(e.target).is('label')) return;
+              if ($(e.target).is('input[name="quantity"]')) return;
+              if ($(e.target).is('td:nth-child(n+8):nth-child(-n+9)')) return;
+              var chkbox = $(this).find('td:first-child :checkbox');
+              chkbox.prop('checked', !chkbox.prop('checked'));
+              page_move = true;
+            });
+            //
+            $('input:checkbox').on('click', function () {
+              page_move = true;
+            });
+          }
+        });
+        // timerID = setTimeout("updateData()", 5000); // 2초 단위로 갱신 처리
+      };
+      // 상품 리스트 생성 (Prod_od_List) END
+
+      // 상품 리스트 생성 (Product_List) START
+      function updateData2() {
+        $.ajax({
+          url: "/update_Prod_List",
+          type: "GET",
+          cache: false,
+          success: function (data2) {
+            var Prod_List = JSON.parse(data2);                      // String 타입 -> Object 타입으로 변환
+            var Prod_Row_Count = $('#hidden_Prod_Row').val();
+            var od_Row_Count = $('#hidden_od_Row').val();
+            
+            for (var a = 0; a < Number(Prod_Row_Count); a++){
+              var prod_no = JSON.stringify(Prod_List[a]['prod_no']).replace(/\"/g, "");                                         // 상품 번호
+              var prod_name = JSON.stringify(Prod_List[a]['prod_name']).replace(/\"/g, "");                                     // 상품 이름
+              var image_url = "https://cdn.imweb.me/upload/"+JSON.stringify(Prod_List[a]['image_url']).replace(/\"/g, "");      // 상품 사진
+
+              for (var b = 0; b < Number(od_Row_Count); b++){
+                var pdn_odn = String($('#id_pdn_odn_'+String(b)).html()).split('-');
+                if (prod_no == pdn_odn[0]){
+                  $('#id2_od_stock_sku_'+String(b)).after("<span>"+prod_name+"</span>");
+                  $('#id_image_url_'+String(b)).css('background-image',"url("+image_url+")");
+                }
+              }
+            }
+          }
+        });
+        // timerID2 = setTimeout("updateData2()", 5000); // 2초 단위로 갱신 처리
+      }
+      // 상품 리스트 생성 (Product_List) END
+
+      // 현재 재고 출력 START
+      function update_now_quantity() {
+        update_Rows();
+        $.ajax({
+          url: "/update_Prod_od_List",
+          type: "GET",
+          cache: false,
+          success: function (data1) {
+            var Prod_od_List = JSON.parse(data1);                      // String 타입 -> Object 타입으로 변환
+            var od_Row_Count = $('#hidden_od_Row').val();
+            var update_od_Row_Count = $('#hidden_update_od_Row').val();
+            var update_time = JSON.stringify(Prod_od_List[0]['update_time']).replace(/\"/g, "");
+            $('#id_Update_time').val("최근 업데이트 시간 : "+update_time);
+
+            for (var a = 0; a < Number(od_Row_Count); a++) {
+              var pdn_odn = JSON.stringify(Prod_od_List[a]['pdn_odn']).replace(/\"/g, "");
+
+              //if ($('#ck_' + String(a)).is(':checked') == false) {                                  // 체크된 상품 제외
+                $('#id_od_stock_' + String(a)).remove();
+                var after_Value2 = `<td align="center" id="id_od_stock_` + String(a) + `" title="상품 선택"></td>`;
+                $('#id_od_status_' + String(a)).after(after_Value2);                                  // 판매 상태 뒤에 추가
+              //}
+            }
+            for (var b = 0; b < Number(od_Row_Count); b++) {
+              var od_pdn_odn = String($('#id_pdn_odn_' + String(b)).text());                          // 이미 페이지에 호출 된 상품번호
+              for (var c = 0; c < Number(update_od_Row_Count); c++) {
+                var pdn_odn = JSON.stringify(Prod_od_List[c]['pdn_odn']).replace(/\"/g, "");          // DB내 호출 된 상품번호
+                var od_stock = JSON.stringify(Prod_od_List[c]['od_stock']).replace(/\"/g, "");        // DB내 현재 재고
+
+                //if (od_pdn_odn == pdn_odn && $('#ck_' + String(b)).is(':checked') == false) {       // 이미 호출된 상품번호와 DB내 상품번호와 일치 시, 체크된 상품 제외
+                if (od_pdn_odn == pdn_odn) {                                                          // 이미 호출된 상품번호와 DB내 상품번호와 일치 시
+                  $('#id_od_stock_' + String(b)).append(CurrencyCommas(od_stock));                                    // 페이지내 호출되어 있는 상품을 찾아 현재 재고 변경
+                }
+              }
+            }
+          }
+        });
+        timerID = setTimeout("update_now_quantity()", 2000); // 2초 단위로 갱신 처리
+      }
+      // 현재 재고 출력 END
+
+      // 입고 출고 업데이트 START
+      function update_IN_quantity() {
+        $.ajax({
+          url: "/update_IN_quantity",
+          type: "GET",
+          cache: false,
+          success: function (data3) {
+            var Prod_IN_and_Row = JSON.parse(data3);                              // String 타입 -> Object 타입으로 변환
+            var IN_Row_Count = JSON.stringify(Prod_IN_and_Row[0]['COUNT(*)']);    // Product_IN 테이블 행수
+            // console.log("IN_Row_Count : "+IN_Row_Count);
+            var od_Row_Count = $('#hidden_od_Row').val();
+
+            for (var c = 0; c < Number(od_Row_Count); c++){
+              if($('#ck_' + String(c)).is(':checked') == false){
+                $('.in_quantity_'+String(c)).remove();
+                $('#in_insert_time_'+String(c)).remove();
+                // $('#id_in_quantity_'+String(c)).remove();
+                var afterValue = `<td width=170px; class="in_quantity_`+String(c)+`" align="center" style="cursor: default;">
+                                    <div class="input-group">
+                                      <input type="text" name="quantity" id="id_in_quantity_`+String(c)+`" class="quantity form-control input-number" value="?" min="0" size="3" style="font-size:11pt" autocomplete="off">
+                                    </div>
+                                  </td>`;
+                var afterValue2 = `<input type="hidden" name="in_insert_time_`+String(c)+`" id="in_insert_time_`+String(c)+`"/>`;
+                $('#id_od_stock_'+String(c)).after(afterValue);
+                $('#hidden_ck_od_Row').after(afterValue2);
+              }                                    
+            }
+
+            if (IN_Row_Count != "0") {
+              for (var a = 0; a < Number(od_Row_Count); a++) {
+                if($('#ck_' + String(a)).is(':checked') == false){
+                  var od_stock_sku = String($('#id2_od_stock_sku_' + String(a)).text());    // 페이지내 stock_sku 호출
+                  var in_quantity = 0;
+
+                  for (var b = 0; b < Number(IN_Row_Count); b++) {
+                    var prod_code_size = JSON.stringify(Prod_IN_and_Row[b + 1]['custom_prod_code']).replace(/\"/g, "") + "-" + JSON.stringify(Prod_IN_and_Row[b + 1]['size']).replace(/\"/g, "");
+                    var prod_in_quantity = JSON.stringify(Prod_IN_and_Row[b + 1]['quantity']).replace(/\"/g, "");   // QR 입고 별 수량
+                    var prod_in_insert_time = JSON.stringify(Prod_IN_and_Row[1]['insert_time']).replace(/\"/g, ""); // 가장 최신 QR 입고 날짜
+                    if (od_stock_sku == prod_code_size) {
+                      in_quantity += Number(prod_in_quantity);
+                      $('#in_insert_time_' + String(a)).val(prod_in_insert_time);
+                    }
+                  }
+                    $('#id_in_quantity_' + String(a)).val(in_quantity);
+                }
+              }
+            }
+            else{
+              for (var a = 0; a < Number(od_Row_Count); a++) {
+                if($('#ck_' + String(a)).is(':checked') == false){
+                  in_quantity = 0;
+                  prod_in_insert_time = '';
+                  $('#id_in_quantity_' + String(a)).val(in_quantity);                      // count가 0이면 0
+                  $('#in_insert_time_' + String(a)).val(prod_in_insert_time);
+                }
+              }
+            }
+          }
+        });
+        // $("#id_tbody").on('click', 'input:checkbox', function (e) {
+        //       if ($(e.target).prop('checked')) {
+        //         var cktext1 = $(this).find('td:nth-child(8):text');
+        //         $(cktext1).attr('disabled', false);                                     // 체크시 입력창 활성화
+        //       }
+        //       else{
+        //         $(cktext1).attr('disabled', true);                                     // 미체크 입력창 비활성화
+        //       }
+        //     });
+        timerID3 = setTimeout("update_IN_quantity()", 3000); // 3초 단위로 갱신 처리
+      }
+
+      function update_OUT_quantity() {
+        $.ajax({
+          url: "/update_OUT_quantity",
+          type: "GET",
+          cache: false,
+          success: function (data4) {
+            var Prod_OUT_and_Row = JSON.parse(data4);                      // String 타입 -> Object 타입으로 변환
+            var OUT_Row_Count = JSON.stringify(Prod_OUT_and_Row[0]['COUNT(*)']);
+            // console.log("OUT_Row_Count : "+OUT_Row_Count);
+            var od_Row_Count = $('#hidden_od_Row').val();
+
+            for (var c = 0; c < Number(od_Row_Count); c++){
+              if($('#ck_' + String(c)).is(':checked') == false){
+                $('.out_quantity_'+String(c)).remove();
+                $('#out_insert_time_'+String(c)).remove();
+                // $('#id_out_quantity_'+String(c)).remove();
+                var afterValue = `<td width=170px; class="out_quantity_`+String(c)+`" align="center" style="cursor: default;">
+                                    <div class="input-group">
+                                      <input type="text" name="quantity" id="id_out_quantity_`+String(c)+`" class="quantity form-control input-number" value="?" min="0" size="3" style="font-size:11pt" autocomplete="off">
+                                    </div>
+                                  </td>`;
+                var afterValue2 = `<input type="hidden" name="out_insert_time_`+String(c)+`" id="out_insert_time_`+String(c)+`"/>`;
+                $('.in_quantity_'+String(c)).after(afterValue);
+                $('#hidden_ck_od_Row').after(afterValue2);      
+              }                                 
+            }
+
+            if (OUT_Row_Count != "0") {
+              for (var a = 0; a < Number(od_Row_Count); a++) {
+                if($('#ck_' + String(a)).is(':checked') == false){
+                  var od_stock_sku = String($('#id2_od_stock_sku_' + String(a)).text());
+                  var out_quantity = 0;
+
+                  for (var b = 0; b < Number(OUT_Row_Count); b++) {
+                    var prod_code_size = JSON.stringify(Prod_OUT_and_Row[b + 1]['custom_prod_code']).replace(/\"/g, "") + "-" + JSON.stringify(Prod_OUT_and_Row[b + 1]['size']).replace(/\"/g, "");
+                    var prod_out_quantity = JSON.stringify(Prod_OUT_and_Row[b + 1]['quantity']).replace(/\"/g, "");   // QR 출고 별 수량
+                    var prod_out_insert_time = JSON.stringify(Prod_OUT_and_Row[1]['insert_time']).replace(/\"/g, ""); // 가장 최신 QR 출고 날짜
+                    if (od_stock_sku == prod_code_size) {
+                      out_quantity += Number(prod_out_quantity);
+                      $('#out_insert_time_' + String(a)).val(prod_out_insert_time);
+                    }
+                  }
+                    $('#id_out_quantity_' + String(a)).val(out_quantity);
+                }
+              }
+            }
+            else{
+              for (var a = 0; a < Number(od_Row_Count); a++) {
+                if($('#ck_' + String(a)).is(':checked') == false){
+                  out_quantity = 0;
+                  prod_out_insert_time = '';
+                  $('#id_out_quantity_' + String(a)).val(out_quantity);                         // count가 0이면 0
+                  $('#out_insert_time_' + String(a)).val(prod_out_insert_time);
+                }
+              }
+            }
+          }
+        });
+        timerID4 = setTimeout("update_OUT_quantity()", 3000); // 3초 단위로 갱신 처리
+      }
+      // 입고 출고 업데이트 END
+
+
+      // 전체 체크 버튼 START
+      $(document).ready(function () {
+        $('#all_ck').on('click', function () {
+            if ($('#all_ck').is(':checked') == true) {
+              $('#id_tbody input:checkbox').prop('checked', true);
+              page_move = true;
+            }
+            else{
+              $('#id_tbody input:checkbox').prop('checked', false);
+            }
+          });
+        $('#all_ck2').on('click', function () {
+          if ($('#all_ck2').is(':checked') == true) {
+            $('#id_tbody2 input:checkbox').prop('checked', true);
+            page_move = true;
+          }
+          else{
+            $('#id_tbody2 input:checkbox').prop('checked', false);
+          }
+        });
+      });
+      // 전체 체크 버튼 END
+
+      // 동기화 버튼 START
+      function go_sync() {
+        var ck_sync = $('.sync_now').data('sync_now');
+        if (ck_sync != "0"){
+          alert("현재 동기화가 진행중입니다.\n동기화가 완료된 후 다시 시도해 주세요.")
+          return;
+        }
+        // 일반 동기화
+        var od_Row_Count = $('#hidden_od_Row').val();
+        var ck_count = 0;
+        for (var a = 0; a < od_Row_Count; a++) {
+          if ($('#ck_' + String(a)).is(':checked') == true) {
+            ck_count++;
+            var ck_pdn_odn = $('#ck_' + String(a)).val();
+            // var ck_od_stock_sku = $('#id2_od_stock_sku_' + String(a)).text();
+            var ck_size = $('#id_od_size_' + String(a)).val();
+            var ck_in_quantity = $('#id_in_quantity_' + String(a)).val();
+            var ck_out_quantity = $('#id_out_quantity_' + String(a)).val();
+
+            $('#hidden_ck_pdn_odn_' + String(a)).val(ck_pdn_odn);
+            // $('#hidden_ck_od_stock_sku_' + String(a)).val(ck_od_stock_sku);
+            $('#hidden_ck_size_' + String(a)).val(ck_size);
+            $('#hidden_ck_in_quantity_' + String(a)).val(ck_in_quantity);
+            $('#hidden_ck_out_quantity_' + String(a)).val(ck_out_quantity);
+          }
+          else {
+            $('#hidden_ck_count' + String(a)).val(0);
+            $('#hidden_ck_pdn_odn_' + String(a)).val(0);
+            // $('#hidden_ck_od_stock_sku_' + String(a)).val(0);
+            $('#hidden_ck_size_' + String(a)).val(0);
+            $('#hidden_ck_in_quantity_' + String(a)).val(0);
+            $('#hidden_ck_out_quantity_' + String(a)).val(0);
+          }
+          $('#hidden_ck_count').val(ck_count);
+        }
+
+        // 세트, 이벤트 ,기획 동기화
+        var Prod_Row_Count_SP = $('#hidden_Prod_Row_SP').val();
+        var ck_count_SP = 0;
+        for (var a = 0; a < Prod_Row_Count_SP; a++) {
+          if ($('#ck_' + String(a)+'_SP').is(':checked') == true) {
+            ck_count_SP++;
+            var ck_pdn_SP = $('#ck_' + String(a)+'_SP').val();
+            // var ck_od_stock_sku = $('#id2_od_stock_sku_' + String(a)).text();
+            // var ck_size = $('#id_od_size_' + String(a)).val();
+            var ck_in_quantity_SP = $('#id_in_quantity_' + String(a)+'_SP').val();
+            var ck_out_quantity_SP = $('#id_out_quantity_' + String(a)+'_SP').val();
+
+            $('#hidden_ck_pdn_' + String(a)+'_SP').val(ck_pdn_SP);
+            // $('#hidden_ck_od_stock_sku_' + String(a)).val(ck_od_stock_sku);
+            // $('#hidden_ck_size_' + String(a)).val(ck_size);
+            $('#hidden_ck_in_quantity_' + String(a)+'_SP').val(ck_in_quantity_SP);
+            $('#hidden_ck_out_quantity_' + String(a)+'_SP').val(ck_out_quantity_SP);
+          }
+          else {
+            $('#hidden_ck_count' + String(a)+'_SP').val(0);
+            $('#hidden_ck_pdn_' + String(a)+'_SP').val(0);
+            // $('#hidden_ck_od_stock_sku_' + String(a)).val(0);
+            // $('#hidden_ck_size_' + String(a)).val(0);
+            $('#hidden_ck_in_quantity_' + String(a)+'_SP').val(0);
+            $('#hidden_ck_out_quantity_' + String(a)+'_SP').val(0);
+          }
+          $('#hidden_ck_count_SP').val(ck_count_SP);
+        }
+
+        if ((ck_count != 0) || (ck_count_SP != 0)) {
+          if (confirm("동기화 하시겠습니까?\n(체크한 상품만 동기화 되며,\n세트/이벤트/기획 상품은 '일괄' 처리됩니다.)")) {
+            // document.getElementsByClassName('sync_form').submit();
+            page_move = false;
+            loading_start();
+            setTimeout("refresh_fn()", 3000);
+            document.sync_form.submit();
+          }
+          else {
+            return;
+          }
+        }
+        else {
+          alert("선택된 상품이 없습니다.")
+          return;
+        }
+      }
+      // 동기화 버튼 END
+      function refresh_fn(){
+        location.reload();
+      };
+    </script>
+
+    <script>
+      // 페이지 이동 체크 START
+      var page_move = false;
+      window.onbeforeunload = function () {
+        if(page_move){
+          return '페이지를 벗어나면 내용이 저장되지 않습니다.';
+        }
+      };
+      // 페이지 이동 체크 END
+    </script>
+    <script src="./static/manage/Product_table/js/Product_table_SP.js"></script>
+	</head>
+<body class="is-preload">
+  <!-- Loading 화면 START -->
+  <script type="text/javascript">
+    function loading_start(){
+         $("#load").show();
+    }
+    function loading_exit(){
+         $("#load").hide();
+    }
+  </script>
+  <style type="text/css">
+    #load {
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      position: fixed;
+      display: block;
+      opacity: 0.95;
+      background: white;
+      z-index: 99;
+      text-align: center;
+    }
+  
+    #load>img {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      margin-left: 300px;
+      z-index: 1000;
+      zoom: 0.3;
+    }
+  </style>
+  <div id="load"> <img src="/static/manage/images/loading_img.gif" alt="loading"> </div>
+  <!-- Loading 화면 END -->
+    
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Main -->
+					<div id="main">
+						<div class="inner">
+
+							<!-- Header -->
+								<header id="header">
+									<a href="/manage" class="logo"><strong>MALDEN</strong> Manage System</a>
+									<ul class="icons">
+                    <li><span>{{user_id}}님</span></li>
+										<!-- <li><a href="#" class="icon brands fa-twitter"><span class="label">Twitter</span></a></li>
+										<li><a href="#" class="icon brands fa-facebook-f"><span class="label">Facebook</span></a></li>
+										<li><a href="#" class="icon brands fa-snapchat-ghost"><span class="label">Snapchat</span></a></li>
+										<li><a href="#" class="icon brands fa-instagram"><span class="label">Instagram</span></a></li>
+										<li><a href="#" class="icon brands fa-medium-m"><span class="label">Medium</span></a></li> -->
+                    <li><a href="#" onclick="location.href='/logout'" >로그아웃</a></li>
+									</ul>
+								</header>
+
+							<!-- Banner -->
+								<!-- <section id="banner">
+									<div class="content">
+										<header>
+											<h1>Hi, I’m Editorial<br />
+											by HTML5 UP</h1>
+											<p>A free and fully responsive site template</p>
+										</header>
+										<p>Aenean ornare velit lacus, ac varius enim ullamcorper eu. Proin aliquam facilisis ante interdum congue. Integer mollis, nisl amet convallis, porttitor magna ullamcorper, amet egestas mauris. Ut magna finibus nisi nec lacinia. Nam maximus erat id euismod egestas. Pellentesque sapien ac quam. Lorem ipsum dolor sit nullam.</p>
+										<ul class="actions">
+											<li><a href="#" class="button big">Learn More</a></li>
+										</ul>
+									</div>
+									<span class="image object">
+										<img src="./static/manage/images/pic10.jpg" alt="" />
+									</span>
+								</section> -->
+
+							<!-- Section -->
+              <br>
+              <!-- 탭 메뉴 구성 START -->
+              <style>
+                ul.tabs {
+                  margin: 0px;
+                  padding: 0px;
+                  list-style: none;
+                }
+                ul.tabs li {
+                  display: inline-block;
+                  background: #898989;
+                  color: white;
+                  padding: 10px 15px;
+                  cursor: pointer;
+                }
+                ul.tabs li.current {
+                  background: #99b19c;
+                  color: white;
+                }
+                .tab-content {
+                  display: none;
+                  /* background: #e0e0e0; */
+                  /* padding: 12px; */
+                }
+                .tab-content.current {
+                  display: inherit;
+                }
+              </style>
+              <script>
+                $(document).ready(function () {
+                  $('ul.tabs li').click(function () {
+                    var tab_id = $(this).attr('data-tab');
+                    $('ul.tabs li').removeClass('current');
+                    $('.tab-content').removeClass('current');
+                    $(this).addClass('current');
+                    $("#" + tab_id).addClass('current');
+                  })
+                });
+              </script>
+              <!-- 탭 메뉴 구성 END -->
+              
+              <h2 class="heading-section">상품관리</h2>
+              <div style="text-align: right;"><input type="text" id="id_Update_time" size="20" style="background-color:transparent;border:0 solid black;text-align:right;" value="최근 업데이트 시간 : 0" readonly></div>
+              <section class="ftco-section" style="margin-top: -80px;">
+                <div>
+                  <ul class="tabs" style="margin-left: 0px;">
+                    <li class="tab-link current" data-tab="tab-1">일반 상품</li>
+                    <li class="tab-link" data-tab="tab-2" style="margin-left: -4px;">세트/이벤트/기획</li>
+                    <span class="sync_now" style="float: right;" data-sync_now=""></span>
+                  </ul>
+                  <!-- <img src="https://img.icons8.com/material-rounded/48/000000/restart--v2.png"/> -->
+                </div>
+                <!-- <section id="banner"> -->
+                  <!-- <article> -->
+                  <div id="tab-1" class="tab-content current">
+                    <input type="hidden" id="hidden_Prod_Row"/>                                                               <!-- 최초 상품 행수 -->
+                    <input type="hidden" id="hidden_od_Row"/>                                                                 <!-- 최초 상품 상세 옵션 행수 -->
+                    <input type="hidden" id="hidden_update_Prod_Row"/>                                                        <!-- 실시간 업데이트 상품 행수 -->
+                    <input type="hidden" id="hidden_update_od_Row"/>                                                          <!-- 실시간 업데이트 상품 상세 옵션 행수 -->
+                    <div class="container" style="width: 200%;">
+                      <div class="col-md-1" style="width: 100%;">
+                        <!-- <h3 class="h5 mb-4 text-center">Table Accordion</h3> -->
+                        <div class="table-wrap">
+                          <table class="table" style="margin-left: 0px;">
+                            <thead class="thead-primary">
+                              <tr>
+                                <!-- <th>Update</th> -->
+                                <th>
+                                  <label class="checkbox-wrap_allcheck checkbox-primary_allcheck" style="cursor: pointer;" title="전체 선택">
+                                  <input type="checkbox" id="all_ck">
+                                  <span class="checkmark_allcheck"></span></label>
+                                </th>
+                                <th>No</th>
+                                <th>상품명</th>
+                                <th>&nbsp;</th>
+                                <th>판매가</th>
+                                <th>판매 상태</th>
+                                <th>현재 재고</th>
+                                <th>입고</th>
+                                <th>출고</th>
+                              </tr>
+                            </thead>
+                            <tbody id="id_tbody">
+              
+                            </tbody>
+                          </table>
+                          <!-- <a class="btn-sync" data-ripple="">동기화</a> -->
+                        </div>
+                      </div>
+                      <!-- </div> -->
+                    </div>
+                  </div>
+
+                  <!-- SP(세트, 기획) 상품 테이블 START -->
+                  <div id="tab-2" class="tab-content">
+                    <input type="hidden" id="hidden_Prod_Row_SP"/>                                                               <!-- 최초 상품 행수 -->
+                    <input type="hidden" id="hidden_od_Row_SP"/>                                                                 <!-- 최초 상품 상세 옵션 행수 -->
+                    <input type="hidden" id="hidden_update_Prod_Row_SP"/>                                                        <!-- 실시간 업데이트 상품 행수 -->
+                    <input type="hidden" id="hidden_update_od_Row_SP"/>                                                          <!-- 실시간 업데이트 상품 상세 옵션 행수 -->
+                    <div class="container" style="width: 200%;">
+                      <div class="col-md-1" style="width: 100%;">
+                        <!-- <h3 class="h5 mb-4 text-center">Table Accordion</h3> -->
+                        <div class="table-wrap">
+                          <table class="table" style="margin-left: 0px;">
+                            <thead class="thead-primary">
+                              <tr>
+                                <!-- <th>Update</th> -->
+                                <th>
+                                  <label class="checkbox-wrap_allcheck checkbox-primary_allcheck" style="cursor: pointer;" title="전체 선택">
+                                  <input type="checkbox" id="all_ck2">
+                                  <span class="checkmark_allcheck"></span></label>
+                                </th>
+                                <th>No</th>
+                                <th>상품명</th>
+                                <th>&nbsp;</th>
+                                <th>판매가</th>
+                                <th>판매 상태</th>
+                                <th>현재 재고</th>
+                                <th>일괄 입고</th>
+                                <th>일괄 출고</th>
+                              </tr>
+                            </thead>
+                            <tbody id="id_tbody2">
+                              
+                            </tbody>
+                          </table>
+                          <!-- <a class="btn-sync" data-ripple="">동기화</a> -->
+                        </div>
+                      </div>
+                      <!-- </div> -->
+                    </div>
+                  </div>
+                  <!-- SP(세트, 기획) 상품 테이블 END -->
+
+                  <form name="sync_form" class="sync_form" action="/imweb_sync" method="POST" id="hidden_form">
+                    <!-- <input type="hidden" id="hidden_form_val" name="hidden_form_val"> -->
+                    <input type="hidden" id="hidden_ck_count" name="hidden_ck_count" value="0"/>              <!-- 체크된 상품 개수 -->
+                    <input type="hidden" id="hidden_ck_od_Row" name="hidden_ck_od_Row" value="0"/>            <!-- 상품 상세 옵션 행수 -->
+                    <input type="hidden" id="hidden_ck_count_SP" name="hidden_ck_count_SP" value="0"/>        <!-- 체크된 세트, 기획 상품 개수 -->
+                    <input type="hidden" id="hidden_ck_Prod_Row_SP" name="hidden_ck_Prod_Row_SP" value="0"/>      <!-- 세트, 기획 상품 상세 옵션 행수 -->
+                    <a href="#" class="btn btn-primary" id="sync_btn" onclick="go_sync(); return false;" style="background-color: #99b19c; float: right; margin-right: 10px; border: 0; outline: none;">동기화</a>
+                  </form>
+              <!-- </article> -->
+              </section>
+              <script src="/static/manage/Product_table/js/jquery.min.js"></script>
+              <script src="/static/manage/Product_table/js/popper.js"></script>
+              <script src="/static/manage/Product_table/js/bootstrap.min.js"></script>
+              <script src="/static/manage/Product_table/js/main.js"></script>
+
+							<!-- Section -->
+								<!-- <section>
+									<header class="major">
+										<h2>Ipsum sed dolor</h2>
+									</header>
+									<div class="posts">
+										<article>
+											<a href="#" class="image"><img src="./static/manage/images/pic01.jpg" alt="" /></a>
+											<h3>Interdum aenean</h3>
+											<p>Aenean ornare velit lacus, ac varius enim lorem ullamcorper dolore. Proin aliquam facilisis ante interdum. Sed nulla amet lorem feugiat tempus aliquam.</p>
+											<ul class="actions">
+												<li><a href="#" class="button">More</a></li>
+											</ul>
+										</article>
+										<article>
+											<a href="#" class="image"><img src="./static/manage/images/pic02.jpg" alt="" /></a>
+											<h3>Nulla amet dolore</h3>
+											<p>Aenean ornare velit lacus, ac varius enim lorem ullamcorper dolore. Proin aliquam facilisis ante interdum. Sed nulla amet lorem feugiat tempus aliquam.</p>
+											<ul class="actions">
+												<li><a href="#" class="button">More</a></li>
+											</ul>
+										</article>
+										<article>
+											<a href="#" class="image"><img src="./static/manage/images/pic03.jpg" alt="" /></a>
+											<h3>Tempus ullamcorper</h3>
+											<p>Aenean ornare velit lacus, ac varius enim lorem ullamcorper dolore. Proin aliquam facilisis ante interdum. Sed nulla amet lorem feugiat tempus aliquam.</p>
+											<ul class="actions">
+												<li><a href="#" class="button">More</a></li>
+											</ul>
+										</article>
+										<article>
+											<a href="#" class="image"><img src="./static/manage/images/pic04.jpg" alt="" /></a>
+											<h3>Sed etiam facilis</h3>
+											<p>Aenean ornare velit lacus, ac varius enim lorem ullamcorper dolore. Proin aliquam facilisis ante interdum. Sed nulla amet lorem feugiat tempus aliquam.</p>
+											<ul class="actions">
+												<li><a href="#" class="button">More</a></li>
+											</ul>
+										</article>
+										<article>
+											<a href="#" class="image"><img src="./static/manage/images/pic05.jpg" alt="" /></a>
+											<h3>Feugiat lorem aenean</h3>
+											<p>Aenean ornare velit lacus, ac varius enim lorem ullamcorper dolore. Proin aliquam facilisis ante interdum. Sed nulla amet lorem feugiat tempus aliquam.</p>
+											<ul class="actions">
+												<li><a href="#" class="button">More</a></li>
+											</ul>
+										</article>
+										<article>
+											<a href="#" class="image"><img src="./static/manage/images/pic06.jpg" alt="" /></a>
+											<h3>Amet varius aliquam</h3>
+											<p>Aenean ornare velit lacus, ac varius enim lorem ullamcorper dolore. Proin aliquam facilisis ante interdum. Sed nulla amet lorem feugiat tempus aliquam.</p>
+											<ul class="actions">
+												<li><a href="#" class="button">More</a></li>
+											</ul>
+										</article>
+									</div>
+								</section> -->
+
+						</div>
+					</div>
+          
+          <!-- QR생성 페이지 새 창 띄우기 -->
+          <script>
+            function qrgen_openPop(){
+              var pop_title = "popupOpener" ;
+              window.open("", pop_title) ;
+                
+              var frmData = document.go_qrgen ;
+              frmData.target = pop_title ;
+              frmData.submit() ;
+            }
+          </script>
+				<!-- Sidebar -->
+					<div id="sidebar">
+						<div class="inner">
+
+							<!-- Search -->
+								<section id="search" class="alt">
+									<form method="post" action="#">
+										<input type="text" name="query" id="query" placeholder="Search" />
+									</form>
+								</section>
+
+							<!-- Menu -->
+								<nav id="menu">
+									<header class="major">
+										<h2>Menu</h2>
+									</header>
+									<ul>
+										<li><a href="/manage">상품관리</a></li>
+										<li>
+                      <form name="go_qrgen" action="https://qrgen.lnksdev.com/qr_gen_box_ext" method="POST" style="margin:0px;padding:0px;">
+                        <input type="hidden" name="session_user_id" id="session_user_id" value={{user_id}}>
+                        <input type="hidden" name="session_user_key" id="session_user_key" value={{user_key}}>
+                        <input type="hidden" name="url" id="url" value={{url}}>
+                      </form>
+                      <!-- <a href="#" onclick="javascript:document.go_qrgen.submit();">QR 코드 생성</a> -->
+                      <a href="#" onclick="qrgen_openPop();">QR 코드 생성</a>
+                    </li>
+										<li><a href="#">Elements</a></li>
+										<li>
+											<span class="opener">Submenu</span>
+											<ul>
+												<li><a href="#">Lorem Dolor</a></li>
+												<li><a href="#">Ipsum Adipiscing</a></li>
+												<li><a href="#">Tempus Magna</a></li>
+												<li><a href="#">Feugiat Veroeros</a></li>
+											</ul>
+										</li>
+										<li><a href="#">Etiam Dolore</a></li>
+										<li><a href="#">Adipiscing</a></li>
+										<li>
+											<span class="opener">Another Submenu</span>
+											<ul>
+												<li><a href="#">Lorem Dolor</a></li>
+												<li><a href="#">Ipsum Adipiscing</a></li>
+												<li><a href="#">Tempus Magna</a></li>
+												<li><a href="#">Feugiat Veroeros</a></li>
+											</ul>
+										</li>
+										<li><a href="#">Maximus Erat</a></li>
+										<li><a href="#">Sapien Mauris</a></li>
+										<li><a href="#">Amet Lacinia</a></li>
+									</ul>
+								</nav>
+
+							<!-- Section -->
+								<section>
+									<header class="major">
+										<h2>Ante interdum</h2>
+									</header>
+									<div class="mini-posts">
+										<article>
+											<a href="#" class="image"><img src="./static/manage/images/pic07.jpg" alt="" /></a>
+											<p>Aenean ornare velit lacus, ac varius enim lorem ullamcorper dolore aliquam.</p>
+										</article>
+										<article>
+											<a href="#" class="image"><img src="./static/manage/images/pic08.jpg" alt="" /></a>
+											<p>Aenean ornare velit lacus, ac varius enim lorem ullamcorper dolore aliquam.</p>
+										</article>
+										<article>
+											<a href="#" class="image"><img src="./static/manage/images/pic09.jpg" alt="" /></a>
+											<p>Aenean ornare velit lacus, ac varius enim lorem ullamcorper dolore aliquam.</p>
+										</article>
+									</div>
+									<ul class="actions">
+										<li><a href="#" class="button">More</a></li>
+									</ul>
+								</section>
+
+							<!-- Section -->
+								<section>
+									<header class="major">
+										<h2>Get in touch</h2>
+									</header>
+									<p>Sed varius enim lorem ullamcorper dolore aliquam aenean ornare velit lacus, ac varius enim lorem ullamcorper dolore. Proin sed aliquam facilisis ante interdum. Sed nulla amet lorem feugiat tempus aliquam.</p>
+									<ul class="contact">
+										<li class="icon solid fa-envelope"><a href="#">information@untitled.tld</a></li>
+										<li class="icon solid fa-phone">(000) 000-0000</li>
+										<li class="icon solid fa-home">1234 Somewhere Road #8254<br />
+										Nashville, TN 00000-0000</li>
+									</ul>
+								</section>
+
+							<!-- Footer -->
+								<footer id="footer">
+									<p class="copyright">&copy; Untitled. All rights reserved. Demo Images: <a href="https://unsplash.com">Unsplash</a>. Design: <a href="https://html5up.net">HTML5 UP</a>.</p>
+								</footer>
+
+						</div>
+					</div>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="/static/manage/assets/js/jquery.min.js"></script>
+			<script src="/static/manage/assets/js/browser.min.js"></script>
+			<script src="/static/manage/assets/js/breakpoints.min.js"></script>
+			<script src="/static/manage/assets/js/util.js"></script>
+			<script src="/static/manage/assets/js/main.js"></script>
+      <script src="/static/manage/button/ripple.js"></script>
+	</body>
+</html>
